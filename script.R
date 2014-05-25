@@ -4,6 +4,7 @@ require("data.table")
 require("dplyr")
 require("stringr")
 require("maps")
+require("mapdata")
 require("ggplot2")
 if (!require("graphZoo")) {
   require("devtools")
@@ -93,13 +94,13 @@ if (!file.exists("data/clan-lab.csv")) {
   write.csv(lab.data, "data/clan-lab.csv")
 }
 
-
 #+ plot.raw.map, echo=TRUE
 us.state.map <- map_data('state')
+
 xlim <- range(us.state.map$long)
 xlim <- xlim + diff(xlim) * c(-.05, .05)
-ylim <- range(us.state.map$lat)
-ylim <- ylim + diff(xlim) * c(-.05, .05)
+range(us.state.map$lat, na.rm = TRUE)
+ylim <- ylim + diff(xlim) * c(-.025, .025)
 subtitle <- paste0("Drug Enforcement Administration (", nrow(lab.data), " locations between ", 
                    year(min(lab.data$DATE, na.rm = TRUE)), " and ", 
                    year(max(lab.data$DATE, na.rm = TRUE)), ")")
@@ -151,11 +152,28 @@ count.data <- lab.data %>%
 us.state.map <- as.data.table(map_data('state')) %>%
   mutate(STATE = toupper(region)) %>%
   merge(count.data, by = "STATE", all.x = TRUE)
+
+alaska.map <- as.data.table(map_data("world2Hires", "USA:Alaska")) %>%
+  mutate(long = long - (min(long) + 125),
+         lat = lat - (min(lat) - 22.5)) %>%
+  mutate(long = (long - min(long)) * (5 / (max(lat) - min(lat))) + min(long),
+         lat = (lat - min(lat)) * (5 / (max(lat) - min(lat))) + min(lat)) %>%
+  mutate(STATE = toupper(subregion)) %>%
+  merge(count.data, by = "STATE", all.x = TRUE)
+
+hawaii.map <- as.data.table(map_data("world2Hires", "Hawaii")) %>%
+  filter(long > 197.5 & lat < 23) %>%
+  mutate(long = long - (min(long) + 110),
+         lat = lat - (min(lat) - 22.5)) %>%
+  mutate(long = (long - min(long)) * (5 / (max(lat) - min(lat))) + min(long),
+         lat = (lat - min(lat)) * (5 / (max(lat) - min(lat))) + min(lat)) %>%
+  mutate(STATE = toupper(region)) %>%
+  merge(count.data, by = "STATE", all.x = TRUE)
   
 xlim <- range(us.state.map$long, na.rm = TRUE)
 xlim <- xlim + diff(xlim) * c(-.05, .05)
-ylim <- range(us.state.map$lat, na.rm = TRUE)
-ylim <- ylim + diff(xlim) * c(-.025, .025)
+ylim <- c(22.5, max(us.state.map$lat, na.rm = TRUE)) #range(us.state.map$lat, na.rm = TRUE)
+#ylim <- ylim + diff(xlim) * c(-.025, .025)
 subtitle <- paste0("Drug Enforcement Administration (", nrow(lab.data), " locations between ", 
                    year(min(lab.data$DATE, na.rm = TRUE)), " and ", 
                    year(max(lab.data$DATE, na.rm = TRUE)), ")")
@@ -164,11 +182,12 @@ g <- ggplot() +
   geom_polygon(data = us.state.map, 
                aes(x = long, y = lat, group = group, fill = PERCAP),
                color = "white") +
-  scale_fill_gradient(low = "steelblue4", high = "firebrick4", 
-                      limits = c(0, max(count.data$PERCAP)),
-                      guide = guide_colorbar(title = element_blank(),
-                                             label.position = "bottom",
-                                             barwidth = 40)) +
+  geom_polygon(data = alaska.map, 
+               aes(x = long, y = lat, group = group, fill = PERCAP),
+               color = "white") +
+  geom_polygon(data = hawaii.map, 
+               aes(x = long, y = lat, group = group,fill = PERCAP),
+               color = "white") +
   coord_fixed(xlim = xlim, ylim = ylim) +
   theme_graphzoo(base_size = 28, family = "Ume P Gothic") +
   theme(axis.line = element_blank(), 
@@ -179,6 +198,11 @@ g <- ggplot() +
         axis.title.y = element_blank(),
         plot.margin = unit(c(1, 0, 0, -1), "lines"),
         legend.position = "bottom") +
+  scale_fill_gradient(low = "steelblue4", high = "firebrick4", na.value = "steelblue4",
+                      limits = c(0, max(count.data$PERCAP)),
+                      guide = guide_colorbar(title = element_blank(),
+                                             label.position = "bottom",
+                                             barwidth = 40)) +
   ggtitle(bquote(atop("Number of suspected clandestine laboratories per 100,000 inhabitants", 
                       atop(italic(.(subtitle)), ""))))
 
