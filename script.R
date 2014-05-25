@@ -155,7 +155,7 @@ us.state.map <- as.data.table(map_data('state')) %>%
 xlim <- range(us.state.map$long, na.rm = TRUE)
 xlim <- xlim + diff(xlim) * c(-.05, .05)
 ylim <- range(us.state.map$lat, na.rm = TRUE)
-ylim <- ylim + diff(xlim) * c(-.05, .05)
+ylim <- ylim + diff(xlim) * c(-.025, .025)
 subtitle <- paste0("Drug Enforcement Administration (", nrow(lab.data), " locations between ", 
                    year(min(lab.data$DATE, na.rm = TRUE)), " and ", 
                    year(max(lab.data$DATE, na.rm = TRUE)), ")")
@@ -166,7 +166,7 @@ g <- ggplot() +
                color = "white") +
   scale_fill_gradient(low = "steelblue4", high = "firebrick4", 
                       limits = c(0, max(count.data$PERCAP)),
-                      guide = guide_colorbar(title.position = "top",
+                      guide = guide_colorbar(title = element_blank(),
                                              label.position = "bottom",
                                              barwidth = 40)) +
   coord_fixed(xlim = xlim, ylim = ylim) +
